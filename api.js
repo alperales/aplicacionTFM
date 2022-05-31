@@ -10,12 +10,11 @@
     POST modificarProducto
 */
 
-// Nota: Nn middleware es una función que se ejecuta antes de llamar a un método
 
 // Importamos Express
 const express = require('express')
 const app = express()
-app.use(express.json()) // Creamos un middleware // Nota: "use" es un middleware. En este caso es para decodificar el JSON que va en el body de las peticiones
+app.use(express.json())
 
 // Importamos Rate Limit
 const rateLimit = require('express-rate-limit')
@@ -59,7 +58,7 @@ function comprobarRolAdministrador (req, res, next) {
         let decode = jwt.verify(token, secreto)
         if (decode.data.administrador !== 1 ) return res.writeHead(401).end()
     } catch (error) {
-        return res.writeHead(401).end() // 401 Unauthorized
+        return res.writeHead(401).end()
     }
     next()
 }
@@ -72,7 +71,7 @@ function comprobarRolCliente (req, res, next) {
         let decode = jwt.verify(token, secreto)
         if (decode.data.administrador !== 0 ) return res.writeHead(401).end()
     } catch (error) {
-        return res.writeHead(401).end() // 401 Unauthorized
+        return res.writeHead(401).end()
     }
     next()
 }
@@ -82,7 +81,7 @@ app.get('/consultarProductos', (req,res) => {
     db.all('SELECT * FROM Productos', (error, rows) => {
         if (error) {
             console.error(error)
-            res.writeHead(500) // 500 Internal Server Error
+            res.writeHead(500)
             return res.end()
         }
         res.send(rows)
@@ -92,12 +91,12 @@ app.get('/consultarProductos', (req,res) => {
 // Método para consultar un producto concreto de la tienda
 app.get('/consultarProducto/:id', (req,res) => {
     let id = req.params.id
-    if (!id.match(/^[0-9]{1,19}$/)) return res.writeHead(400).end() // Comprobamos esto aquí porque los parámetros de la URL se tratan como un string   // 400 Bad Request
-    if (id > 9223372036854775807) return res.writeHead(400).end()   // Para el BufferOverFlow   // 400 Bad Request
+    if (!id.match(/^[0-9]{1,19}$/)) return res.writeHead(400).end() // Comprobamos aquí que el ID machee con números porque los parámetros de la URL se tratan como un string
+    if (id > 9223372036854775807) return res.writeHead(400).end()
     db.get('SELECT * FROM Productos WHERE id = ?', [id], (error, rows) => {
         if (error) {
             console.error(error)
-            res.writeHead(500) // 500 Internal Server Error
+            res.writeHead(500)
             return res.end()
         }
         res.send(rows)
@@ -112,12 +111,12 @@ app.post('/login', (req,res) => {
     db.get('SELECT * FROM Usuarios WHERE usuario = ? AND contrasena = ?', [usuario, contrasena], (error, row) => {
         if (error) {
             console.error(error)
-            res.writeHead(500) // 500 Internal Server Error // Error en los datos recibidos por el usuario
+            res.writeHead(500)
             return res.end()
         }
         if (!row) {
             console.log = fichero_logs.write(new Date() + " " + req.socket.remoteAddress + " Login fallido. Usuario: " + usuario + '\n')
-            return res.writeHead(401).end() // 401 Unauthorized
+            return res.writeHead(401).end()
         }
         console.log = fichero_logs.write(new Date() + " " + req.socket.remoteAddress + " Login exitoso. Usuario: " + usuario + '\n')
         let token = jwt.sign(
@@ -128,7 +127,7 @@ app.post('/login', (req,res) => {
                 }
             }, secreto, { expiresIn: '1h' }) // Nota: el secreto es una cadena aleatoria que va a servir para generar los token y verificarlos luego
         
-        res.send({  // Mandamos al usuario el token en formato JSON
+        res.send({  // Mandamos al usuario el token en formato JWT
             token: token
         })
     })
@@ -140,10 +139,10 @@ app.post('/comprar', comprobarRolCliente, (req,res) => {    // Nota: Comprobamos
     db.get('SELECT * FROM Productos WHERE id = ?', [id], (error, row) => {
         if (error) {
             console.error(error)
-            res.writeHead(500) // Error en los datos recibidos por el usuario
+            res.writeHead(500) 
             return res.end()
         }
-        if (!row) return res.writeHead(404).end() // Error en los datos recibidos por el usuario
+        if (!row) return res.writeHead(404).end()
         res.send({
             mensaje: 'El producto se ha comprado correctamente',
             producto: row
@@ -165,7 +164,7 @@ app.post('/crearProducto', comprobarRolAdministrador, (req,res) => {
     db.run('INSERT INTO Productos (nombre, precio, descripcion, calorias) VALUES (?, ?, ?, ?)', [nombre, precio, descripcion, calorias], (error) => { // Nota: el "id" no lo metemos ya que lo metimos como "autoincremetar" en la base de datos
         if (error) {
             console.error(error)
-            res.writeHead(400) // Error en los datos recibidos por el usuario
+            res.writeHead(400)
             return res.end()
         }
         console.log = fichero_logs.write(new Date() + " " + req.socket.remoteAddress + " Producto creado. Producto: " + nombre + " " + precio + " " + descripcion + " " + calorias + '\n')
@@ -180,7 +179,7 @@ app.post('/borrarProducto', comprobarRolAdministrador, (req,res) => {
     db.run('DELETE FROM Productos WHERE id = ?', [id], (error) => {
         if (error) {
             console.error(error)
-            res.writeHead(400) // Error en los datos recibidos por el usuario
+            res.writeHead(400)
             return res.end()
         }
         console.log = fichero_logs.write(new Date() + " " + req.socket.remoteAddress + " Producto borrado. Producto: " + req.body.id + '\n')
@@ -203,7 +202,7 @@ app.post('/modificarProducto', comprobarRolAdministrador, (req,res) => {
     db.run('UPDATE Productos SET nombre = ?, precio = ?, descripcion = ?, calorias= ? WHERE id = ?', [nombre, precio, descripcion, calorias, id], (error) => {
         if (error) {
             console.error(error)
-            res.writeHead(400) // Error en los datos recibidos por el usuario
+            res.writeHead(400)
             return res.end()
         }
         console.log = fichero_logs.write(new Date() + " " + req.socket.remoteAddress + " Producto modificado. Producto ID: " + nombre + " " + precio + " " + descripcion + " " + calorias + " " + id + '\n')
